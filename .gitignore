@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+data_local/
+# media and model binaries live in Drive / GCS, not GitHub
+*.mp4
+*.mov
+*.avi
+*.jpg
+*.jpeg
+*.png
+!results/**/*.png
+*.tflite
+*.task
+*.h5
+*.keras
+.env
+service-account*.json
