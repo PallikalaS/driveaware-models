@@ -15,6 +15,9 @@ Gemini fine-tuning, evaluation and system-test matching. App code lives in
 | `driveaware_data/crop.py` | Center vs dynamic upper-body crop (same geometry as the app) | Swathi |
 | `scripts/extract_frames.py` | Clips/images → 224×224 frames + pre-filled `labels.csv` + `class_counts.csv` | Swathi wrote · Mahitha runs |
 | `scripts/crop_compare.py` | Side-by-side crop images for choosing the crop | Swathi wrote · Mahitha runs |
+| `driveaware_data/signals.py` | Python port of the app's rules (EAR/MAR/pose, TemporalEngine, calibration), kept in step with the Kotlin | Swathi |
+| `scripts/replay_clip.py` | Replay recorded clips through Model C + rules → per-frame CSV + app-format event log (threshold tuning) | Swathi wrote · Vanessa runs |
+| `scripts/build_label_sheet.py` | Clips → Gemini label-sheet rows (keyframe + exact backend signal line) | Swathi wrote · Swathi/Bindu run |
 | `eval/match_events.py` | App event log vs scripted session CSV → recall, precision, false alarms/10 min, delay | Swathi wrote · Vanessa runs |
 | `infra/gcp_setup.sh` | Project, billing budget, APIs, bucket, service account, teammate IAM | Swathi |
 | `notebooks/` | Model A training notebook, Gemini tuning notebook (next) | Swathi wrote · Mahitha/Bindu run |
@@ -102,8 +105,34 @@ Registry / Cloud Storage, bucket `gs://<project>-data`, the `driveaware-backend`
 check or tuning. Use **Vertex AI Studio** (console.cloud.google.com) for the base check, not
 Google AI Studio, where `gemini-3.5-flash` is deprecated and silently routed to 3.6 Flash.
 
+## Replay and Gemini label sheet
+
+Both need Google's Face Landmarker file (same as the app). Download once:
+```bash
+curl -fsSL -o face_landmarker.task \
+  https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+```
+
+**Threshold tuning (Vanessa, validation clips only):**
+```bash
+python scripts/replay_clip.py ~/Drive/DriveAware/Team_validation/V0*.mp4 --model face_landmarker.task --out results/replay
+python eval/match_events.py --script-dir ../driveaware-app/tests/validation --log-dir results/replay --out results/validation_match
+# try a change:  --set long_closure_s=0.8 --set gaze_max_s=2.5   (names as in driveaware_data/signals.py)
+```
+Each clip's first 10 s are used as calibration (the V0x scripts start with 15 s of looking forward).
+
+**Gemini label sheet (Bindu labels these rows):**
+```bash
+python scripts/build_label_sheet.py ~/Drive/DriveAware/Team_raw ~/Drive/DriveAware/Team_test_only \
+  ~/Drive/DriveAware/Team_validation --model face_landmarker.task --out ~/Drive/DriveAware/Gemini_events
+```
+Writes `label_sheet.csv` + `keyframes/`. Import the CSV into Google Sheets (File → Import), keep
+`keyframes/` next to it in Drive. Rows come from the rules (`rules`), from activity clips standing in
+for Model A (`clip_label`, model_a conf 0.00 until `model_a_v1.tflite` exists; regenerate these rows
+then) and phone-use triggers on non-phone frames as false-alarm candidates (`confusion`). Held-out
+members' clips (incl. Vanessa's pilot recordings in `Team_test_only/pilot/`) become **test** rows.
+
 ## Still to build (in plan order)
-- Gemini label-sheet builder (replay clips → keyframes + signal summaries → Google Sheet)
 - Model A training notebook (Model Maker EfficientNet-Lite0) + CLIP zero-shot and frozen-backbone baselines; Keras MobileNetV3 fallback
 - Model A evaluation script
 - Sheet → JSONL converter (uses `build_prompt()` from the backend so train == serve) + upload
