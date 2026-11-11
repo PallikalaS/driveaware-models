@@ -17,3 +17,6 @@ data_local/
 *.keras
 .env
 service-account*.json
+
+# macOS
+.DS_Store
