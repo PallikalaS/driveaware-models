@@ -88,15 +88,19 @@ Creates the project, a $50 budget alert, enables Vertex AI / Cloud Run / Cloud B
 Registry / Cloud Storage, bucket `gs://<project>-data`, the `driveaware-backend` service account
 (roles/aiplatform.user, no keys) and gives teammates Vertex AI Studio + bucket access.
 
-**Gemini model for tuning — TO CONFIRM (task #4):** record here the exact tunable Gemini Flash model
-ID, region and dataset limits from the Vertex AI supervised-tuning docs before building the JSONL.
-`gemini-2.5-flash` in `us-central1` is the working assumption in the backend; it has not been checked.
+**Gemini model for tuning (task #4, confirmed Nov 11, 2026):**
 
 | Field | Value |
 |---|---|
-| Tunable model ID | _tbd_ |
-| Region | _tbd_ |
-| Max examples / image limits | _tbd_ |
+| Tunable model ID | `gemini-3.5-flash` (GA on Vertex AI, retirement May 19, 2027 or later) |
+| Tuning location | `us` multi-region (3.5 Flash tunes on `us` / `eu` only) |
+| Tuned-model serving | `us` (also `eu`, `global`) |
+| Thinking | `MINIMAL` for the tuned task |
+| Limits | 131,072 tokens per example; up to 300K multimodal examples; JSONL ≤ 1 GB |
+
+`gemini-2.5-flash` was retired on Vertex AI on Oct 20, 2026, so it can't be used for the base
+check or tuning. Use **Vertex AI Studio** (console.cloud.google.com) for the base check, not
+Google AI Studio, where `gemini-3.5-flash` is deprecated and silently routed to 3.6 Flash.
 
 ## Still to build (in plan order)
 - Gemini label-sheet builder (replay clips → keyframes + signal summaries → Google Sheet)
