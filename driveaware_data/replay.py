@@ -93,12 +93,18 @@ def iter_frames(path: str, target_fps: float) -> Iterator[tuple[int, np.ndarray,
     cap.release()
 
 
+# Verified on real video (vanessa_safe_day-none_t1, 13.5-14.5 s): when the head
+# drops forward, MediaPipe Python's matrix gives a POSITIVE pitch, but the rules
+# expect head-down = NEGATIVE (nod: pitch_delta <= -15). Flip it here.
+PITCH_SIGN = -1.0
+
+
 def replay_clip(path: str, face: FaceModel, th: Thresholds | None = None, fps: float = 15.0,
                 calib_s: float = 10.0, baseline: Baseline | None = None,
-                pitch_sign: float = 1.0) -> ReplayResult:
+                pitch_sign: float = PITCH_SIGN) -> ReplayResult:
     """Run one clip. The first `calib_s` seconds calibrate (like the app's Calibrate
     button) unless a `baseline` is given; events are only detected after that.
-    `pitch_sign=-1` flips head pitch if a check shows "head down" comes out positive."""
+    Head pitch is multiplied by `pitch_sign` so head-down is negative (see PITCH_SIGN)."""
     res = ReplayResult(clip=Path(path).name, fps=fps, baseline=baseline)
     engine = TemporalEngine(th or Thresholds(), baseline or Baseline())
     cal = None if baseline else Calibration(duration_ms=int(calib_s * 1000))
