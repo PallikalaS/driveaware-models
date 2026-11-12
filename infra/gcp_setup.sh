@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # One-time Google Cloud setup for DriveAware (Swathi tasks #2–#3).
-# Usage: PROJECT_ID=driveaware-cs663 BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX bash infra/gcp_setup.sh
+# Usage:
+#   PROJECT_ID=driveaware-cs663-swathi BILLING_ACCOUNT=XXXXXX-XXXXXX-XXXXXX \
+#   TEAM_EMAILS="teammate1@example.edu teammate2@example.edu" bash infra/gcp_setup.sh
+# TEAM_EMAILS is passed at run time so no personal addresses live in the repo.
 set -euo pipefail
 : "${PROJECT_ID:?}"; : "${BILLING_ACCOUNT:?}"
 REGION="${REGION:-us-central1}"
 BUCKET="gs://${PROJECT_ID}-data"
 SA="driveaware-backend@${PROJECT_ID}.iam.gserviceaccount.com"
-TEAM=(mrangineni@horizon.csueastbay.edu btekumudi@horizon.csueastbay.edu vrodriguez89@horizon.csueastbay.edu)
+read -r -a TEAM <<< "${TEAM_EMAILS:-}"   # space-separated; empty = skip teammate access
 
 gcloud projects create "$PROJECT_ID" --name="DriveAware CS663" || true
 gcloud billing projects link "$PROJECT_ID" --billing-account="$BILLING_ACCOUNT"
@@ -29,7 +32,7 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:${
 gcloud storage buckets add-iam-policy-binding "$BUCKET" --member="serviceAccount:${SA}" --role=roles/storage.objectViewer
 
 # Teammates: Vertex AI Studio (Bindu's base-Gemini check) + bucket read/write for keyframes
-for u in "${TEAM[@]}"; do
+for u in "${TEAM[@]+"${TEAM[@]}"}"; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="user:${u}" --role=roles/aiplatform.user --condition=None
   gcloud storage buckets add-iam-policy-binding "$BUCKET" --member="user:${u}" --role=roles/storage.objectAdmin
 done
