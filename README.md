@@ -135,5 +135,25 @@ members' clips (incl. Vanessa's pilot recordings in `Team_test_only/pilot/`) bec
 ## Still to build (in plan order)
 - Model A training notebook (Model Maker EfficientNet-Lite0) + CLIP zero-shot and frozen-backbone baselines; Keras MobileNetV3 fallback
 - Model A evaluation script
-- Sheet → JSONL converter (uses `build_prompt()` from the backend so train == serve) + upload
-- Base-vs-tuned Gemini evaluation script
+
+## Gemini tuning data and evaluation
+
+**Sheet → JSONL (#22):** export Bindu's final sheet as CSV, then
+```
+python scripts/sheet_to_jsonl.py label_sheet_final.csv \
+    --image-prefix gs://driveaware-cs663-swathi-data/gemini/keyframes \
+    --keyframes ~/Drive/DriveAware/Gemini_events/keyframes --out ~/Drive/DriveAware/Gemini_events/jsonl
+```
+Every row is checked against `labeling_guide.md` (allowed words, authority rule, section 4 severity/action
+table, sunglasses cap, message rules); any bad row stops the run and is listed by sheet row number.
+Writes `train.jsonl` / `val.jsonl` (tuning) and `test.jsonl` (held-out, evaluation only) in the Vertex AI
+format: system instruction + image + signal line → compact JSON answer, same order as the backend sends.
+
+**Base vs tuned (#29):** `pip install google-genai`, `gcloud auth application-default login`, then
+```
+python eval/gemini_eval.py run test.jsonl --model gemini-3.5-flash --name base
+python eval/gemini_eval.py run test.jsonl --model projects/<num>/locations/us/endpoints/<id> --name tuned
+python eval/gemini_eval.py compare results/gemini/base_predictions.csv results/gemini/tuned_predictions.csv
+```
+Reports event accuracy / macro-F1, false_alarm precision and recall, severity / action accuracy,
+valid-JSON and guide-valid rates, authority-rule violations and latency p50/p95 (`comparison.md` for the report).
