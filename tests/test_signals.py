@@ -11,8 +11,8 @@ from driveaware_data.signals import (Baseline, Calibration, Frame, TemporalEngin
 BASE = Baseline(ear=0.30)
 
 
-def frame(t, ear=0.30, mar=0.1, yaw=0.0, pitch=0.0):
-    return Frame(t, True, ear, mar, 0.0, yaw, pitch)
+def frame(t, ear=0.30, mar=0.1, yaw=0.0, pitch=0.0, blink=0.0):
+    return Frame(t, True, ear, mar, 0.0, yaw, pitch, eye_blink=blink)
 
 
 def run(e, start, end, f):
@@ -76,3 +76,15 @@ def test_geometry():
     assert 0.1 < mean_ear(lm) < 0.4
     yaw, pitch, roll = head_pose(np.eye(4))
     assert (round(yaw), round(pitch), round(roll)) == (0, 0, 0)
+
+
+def test_blink_score_counts_quick_blinks_ear_misses():
+    e = TemporalEngine(base=BASE)
+    run(e, 0, 5000, lambda t: frame(t, ear=0.26, blink=0.8) if t % 1000 < 150 else frame(t))
+    assert e.state.blinks >= 4
+
+
+def test_no_eye_closure_alert_during_yawn():
+    e = TemporalEngine(base=BASE)
+    ev = run(e, 0, 2500, lambda t: frame(t, ear=0.10, mar=0.8))
+    assert [x.type for x in ev] == ["yawn"]

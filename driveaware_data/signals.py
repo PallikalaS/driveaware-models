@@ -64,6 +64,7 @@ def head_pose(m):
 @dataclass
 class Thresholds:
     ear_closed_ratio: float = 0.70
+    blink_score_closed: float = 0.50   # eyeBlink blendshape >= this also counts as closed
     long_closure_s: float = 1.0
     severe_closure_s: float = 1.0      # labeling_guide: any closure >= 1.0 s is high
     blink_max_s: float = 0.5
@@ -97,6 +98,7 @@ class Frame:
     yaw: float = 0.0
     pitch: float = 0.0
     roll: float = 0.0
+    eye_blink: float = 0.0   # mean of eyeBlinkLeft/Right blendshapes
 
 
 @dataclass
@@ -164,21 +166,25 @@ class TemporalEngine:
             self.state = replace(self.state, face_found=False)
             return out
 
-        # eyes: blink, long closure, PERCLOS
-        closed = f.ear < base.ear * th.ear_closed_ratio
+        # mouth first: no eye-closure alert while yawning (eyes squeeze shut in a real yawn)
+        mouth_open = f.mar >= th.yawn_mar or f.jaw_open >= th.yawn_jaw_open
+
+        # eyes: blink, long closure, PERCLOS (EAR or the eyeBlink blendshape)
+        closed = f.ear < base.ear * th.ear_closed_ratio or f.eye_blink >= th.blink_score_closed
         if closed:
             if self._close_start is None:
                 self._close_start = t
                 self._closure_fired = False
                 self._last_level.pop("eye_closure_long", None)
             dur = (t - self._close_start) / 1000
-            if not self._closure_fired and dur >= th.long_closure_s:
+            if not self._closure_fired and not mouth_open and dur >= th.long_closure_s:
                 self._closure_fired = True
                 lvl = 3 if dur >= th.severe_closure_s else 2
                 e = self._fire("eye_closure_long", t, lvl, f"closed {dur:.1f}s")
                 if e:
                     out.append(e)
-            if self._closure_fired and dur >= th.severe_closure_s and self._last_level.get("eye_closure_long", 0) < 3:
+            if (self._closure_fired and not mouth_open and dur >= th.severe_closure_s
+                    and self._last_level.get("eye_closure_long", 0) < 3):
                 self._last_level["eye_closure_long"] = 3
                 out.append(Event("eye_closure_long", t / 1000, 3, f"closed {dur:.1f}s"))
         elif self._close_start is not None:
@@ -201,7 +207,7 @@ class TemporalEngine:
                 out.append(e)
 
         # yawn
-        if f.mar >= th.yawn_mar or f.jaw_open >= th.yawn_jaw_open:
+        if mouth_open:
             if self._yawn_start is None:
                 self._yawn_start, self._yawn_fired = t, False
             if not self._yawn_fired and (t - self._yawn_start) / 1000 >= th.yawn_min_s:

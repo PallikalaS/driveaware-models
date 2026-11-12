@@ -67,14 +67,14 @@ class FaceModel:
             return Frame(t_ms, False)
         h, w = bgr.shape[:2]
         lm = [(p.x, p.y, p.z) for p in res.face_landmarks[0]]
-        jaw = 0.0
-        if res.face_blendshapes:
-            jaw = next((c.score for c in res.face_blendshapes[0] if c.category_name == "jawOpen"), 0.0)
+        shapes = {c.category_name: c.score for c in res.face_blendshapes[0]} if res.face_blendshapes else {}
+        jaw = shapes.get("jawOpen", 0.0)
+        blink = (shapes.get("eyeBlinkLeft", 0.0) + shapes.get("eyeBlinkRight", 0.0)) / 2
         yaw = pitch = roll = 0.0
         if res.facial_transformation_matrixes:
             yaw, pitch, roll = head_pose(np.asarray(res.facial_transformation_matrixes[0]).reshape(4, 4))
         aspect = w / h
-        return Frame(t_ms, True, mean_ear(lm, aspect), mar(lm, aspect), jaw, yaw, pitch, roll)
+        return Frame(t_ms, True, mean_ear(lm, aspect), mar(lm, aspect), jaw, yaw, pitch, roll, blink)
 
 
 def iter_frames(path: str, target_fps: float) -> Iterator[tuple[int, np.ndarray, float]]:
@@ -113,6 +113,7 @@ def replay_clip(path: str, face: FaceModel, th: Thresholds | None = None, fps: f
             f = face.frame_signals(lmk, frame, t_ms)
             f.pitch *= pitch_sign
             row = {"t_s": round(t_ms / 1000, 3), "face": int(f.face_found), "ear": round(f.ear, 4),
+                   "blink": round(f.eye_blink, 3),
                    "mar": round(f.mar, 4), "jaw": round(f.jaw_open, 3), "yaw": round(f.yaw, 1),
                    "pitch": round(f.pitch, 1), "phase": "calibrating" if cal else "monitoring"}
             if cal is not None:
