@@ -62,12 +62,41 @@ def load_script(path: Path) -> pd.DataFrame:
     return df
 
 
+MEASURED = {"eye_closure_long", "perclos_high", "nod"}
+
+
+def collapse_gemini_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """One row per alert the driver actually got.
+
+    In full mode the app logs each detection twice: the local row (source rules /
+    model_a) and, a moment later, the Gemini verdict (source gemini:...) with the same
+    t_s and event_type. Counting both would turn every verified alert into a false
+    alarm. Gemini rows are dropped; when Gemini dismissed a non-measured event as
+    false_alarm, the app cleared that alert, so its local row is dropped too.
+    """
+    if "source" not in df.columns:
+        return df
+    src = df["source"].fillna("").astype(str)
+    gem = df[src.str.startswith("gemini")]
+    local = df[~src.str.startswith("gemini")]
+    if "gemini_event" in df.columns and len(gem):
+        dismissed = gem[(gem["gemini_event"] == "false_alarm") & (~gem["event_type"].isin(MEASURED))]
+        drop = set()
+        for _, g in dismissed.iterrows():
+            cand = local[(local.event_type == g.event_type) & ((local.t_s - g.t_s).abs() < 0.05)
+                         & (~local.index.isin(drop))]
+            if len(cand):
+                drop.add(cand.index[0])
+        local = local.drop(index=list(drop))
+    return local
+
+
 def load_log(path: Path, offset: float) -> pd.DataFrame:
     df = pd.read_csv(path)
     for c in ("t_s", "event_type"):
         if c not in df.columns:
             raise ValueError(f"{path.name}: app log needs column {c!r}")
-    df = df.copy()
+    df = collapse_gemini_rows(df.copy())
     df["t_s"] = df["t_s"].astype(float) + offset
     if "level" in df.columns:
         df = df[df["level"].fillna(1).astype(int) >= 1]
