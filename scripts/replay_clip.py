@@ -50,8 +50,8 @@ def main(argv=None):
     ap.add_argument("--fps", type=float, default=15.0, help="processing rate (phone-like)")
     ap.add_argument("--calib-s", type=float, default=10.0, help="seconds of calibration at clip start")
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="override a threshold")
-    ap.add_argument("--pitch-sign", type=float, default=-1.0, choices=[1.0, -1.0],
-                    help="-1 (default, verified on real video): head-down -> negative pitch")
+    ap.add_argument("--pitch-sign", type=float, default=1.0, choices=[1.0, -1.0],
+                    help="extra multiplier on pitch; head_pose() already makes head-down negative")
     a = ap.parse_args(argv)
 
     th = parse_overrides(a.set)

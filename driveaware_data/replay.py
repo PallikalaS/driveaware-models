@@ -93,10 +93,9 @@ def iter_frames(path: str, target_fps: float) -> Iterator[tuple[int, np.ndarray,
     cap.release()
 
 
-# Verified on real video (vanessa_safe_day-none_t1, 13.5-14.5 s): when the head
-# drops forward, MediaPipe Python's matrix gives a POSITIVE pitch, but the rules
-# expect head-down = NEGATIVE (nod: pitch_delta <= -15). Flip it here.
-PITCH_SIGN = -1.0
+# head_pose() already returns head-down as negative (same as the app's
+# FaceSignals.headPose). Keep 1.0; -1 only for debugging a different camera setup.
+PITCH_SIGN = 1.0
 
 
 def replay_clip(path: str, face: FaceModel, th: Thresholds | None = None, fps: float = 15.0,

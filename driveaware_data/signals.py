@@ -48,11 +48,13 @@ def head_pose(m):
 
     Accepts a 4x4 nested list / numpy array (row-major, as MediaPipe Python
     returns it) — same formulas as FaceSignals.headPose on the Android side.
+    Head DOWN = negative pitch (the rules' convention); MediaPipe's matrix gives
+    head-down as positive (verified on video and the app overlay), so pitch is negated.
     """
     def r(row, col):
         return float(m[row][col])
     sy = math.sqrt(r(0, 0) ** 2 + r(1, 0) ** 2)
-    pitch = math.degrees(math.atan2(r(2, 1), r(2, 2)))
+    pitch = -math.degrees(math.atan2(r(2, 1), r(2, 2)))
     yaw = math.degrees(math.atan2(-r(2, 0), sy))
     roll = math.degrees(math.atan2(r(1, 0), r(0, 0)))
     return yaw, pitch, roll
