@@ -154,6 +154,16 @@ table, sunglasses cap, message rules); any bad row stops the run and is listed b
 Writes `train.jsonl` / `val.jsonl` (tuning) and `test.jsonl` (held-out, evaluation only) in the Vertex AI
 format: system instruction + image + signal line → compact JSON answer, same order as the backend sends.
 
+**Upload and tune (#23, #24, #31):**
+```
+python scripts/gemini_tuning.py upload --keyframes <Gemini_events>/keyframes --jsonl <Gemini_events>/jsonl
+python scripts/gemini_tuning.py tune          # base gemini-3.5-flash, us-central1, train + val JSONL
+python scripts/gemini_tuning.py status --wait # prints the tuned endpoint and the backend redeploy command
+```
+`upload` checks every image URI points into the bucket and warns below 100 training rows (Vertex AI
+recommends 100–500). Tuning jobs and tuned endpoints are regional (`us-central1`), so the redeploy
+command sets `VERTEX_LOCATION=us-central1` together with the endpoint.
+
 **Base vs tuned (#29):** `pip install google-genai`, `gcloud auth application-default login`, then
 ```
 python eval/gemini_eval.py run test.jsonl --model gemini-3.5-flash --name base
