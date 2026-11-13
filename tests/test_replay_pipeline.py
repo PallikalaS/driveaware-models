@@ -107,3 +107,16 @@ def test_label_sheet_val_frac_whole_clips_per_person(tmp_path, monkeypatch):
     for who in ("swathi", "bindu"):                                # 1 of 4 clips each in val
         clips = {c for c in split_by_clip if c.startswith(who)}
         assert sum(split_by_clip[c] == {"val"} for c in clips) == 1
+
+
+def test_team_test_only_folder_is_always_test(tmp_path, monkeypatch):
+    raw, test_dir = tmp_path / "Team_raw", tmp_path / "Team_test_only" / "pilot"
+    raw.mkdir(); test_dir.mkdir(parents=True)
+    make_clip(raw / "bindu_safe_day-none_t1.mp4")
+    make_clip(test_dir / "S01.mp4")                     # pilot clip with no name in it
+    monkeypatch.setattr(build_label_sheet, "FaceModel", StubFace)
+    out = tmp_path / "out"
+    build_label_sheet.main([str(raw), str(tmp_path / "Team_test_only"), "--model", "x", "--out", str(out),
+                            "--calib-s", "3", "--val-frac", "0.15"])
+    rows = list(csv.DictReader((out / "label_sheet.csv").open()))
+    assert {r["split"] for r in rows if r["clip"] == "S01.mp4"} == {"test"}
