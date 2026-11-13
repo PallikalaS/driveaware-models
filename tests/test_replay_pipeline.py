@@ -89,3 +89,21 @@ def test_label_sheet_val_dir_and_prefix(tmp_path, monkeypatch):
     assert {r["split"] for r in rows if r["clip"].startswith("V01")} == {"val"}
     assert {r["split"] for r in rows if r["clip"].startswith("bindu")} <= {"train"}
     assert not (out / "label_sheet.csv").exists()
+
+
+def test_label_sheet_val_frac_whole_clips_per_person(tmp_path, monkeypatch):
+    raw = tmp_path / "Team_raw"; raw.mkdir()
+    for who in ("swathi", "bindu"):
+        for k in range(1, 5):
+            make_clip(raw / f"{who}_safe_day-none_t{k}.mp4")
+    monkeypatch.setattr(build_label_sheet, "FaceModel", StubFace)
+    out = tmp_path / "out"
+    build_label_sheet.main([str(raw), "--model", "x", "--out", str(out), "--calib-s", "3", "--val-frac", "0.25"])
+    rows = list(csv.DictReader((out / "label_sheet.csv").open()))
+    split_by_clip = {}
+    for r in rows:
+        split_by_clip.setdefault(r["clip"], set()).add(r["split"])
+    assert all(len(s) == 1 for s in split_by_clip.values())       # a clip never spans splits
+    for who in ("swathi", "bindu"):                                # 1 of 4 clips each in val
+        clips = {c for c in split_by_clip if c.startswith(who)}
+        assert sum(split_by_clip[c] == {"val"} for c in clips) == 1
