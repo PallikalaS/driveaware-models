@@ -172,3 +172,15 @@ python eval/gemini_eval.py compare results/gemini/base_predictions.csv results/g
 ```
 Reports event accuracy / macro-F1, false_alarm precision and recall, severity / action accuracy,
 valid-JSON and guide-valid rates, authority-rule violations and latency p50/p95 (`comparison.md` for the report).
+
+## Threshold tuning on V01–V03 (Vanessa #14/#15, app #36)
+```
+python scripts/tune_thresholds.py ~/Projects/driveaware/data/Team_validation \
+    --scripts ~/Projects/driveaware/driveaware-app/tests/validation \
+    --model face_landmarker.task --out results/tuning
+```
+Runs the face model once per V clip (cached), then replays the app's rules for every candidate
+value of each threshold, one at a time from the defaults (2 rounds), and scores each against
+Vanessa's V0x.csv scripts with the system-test matching. Writes `tuning_table.csv` (every value
+tried), `thresholds.csv` (start vs suggested, with the app setting name) and `baseline_report.txt`.
+Only rule events are scored; eye events are skipped on sunglasses clips (the app's degraded mode).
