@@ -108,6 +108,9 @@ def main(argv=None):
     rng = random.Random(a.seed)
     held = {s.strip() for s in a.held_out.split(",") if s.strip()}
     val = {s.strip() for s in a.val_subjects.split(",") if s.strip()}
+    missing = [x for x in a.inputs if not Path(x).expanduser().exists()]
+    if missing:
+        ap.error(f"input not found: {missing}. Check the folder path (an empty $D gives '/Team_raw').")
     out = Path(a.out).expanduser()
     kdir = out / "keyframes"
     kdir.mkdir(parents=True, exist_ok=True)
@@ -122,6 +125,9 @@ def main(argv=None):
             return "val"
         return s
 
+    if not clips:
+        ap.error(f"no .mp4 clips found in {a.inputs}")
+    print(f"{len(clips)} clips")
     face = FaceModel(a.model)
     rows = []
 
