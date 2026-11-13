@@ -42,3 +42,12 @@ def test_dynamic_crop_keeps_lap_and_is_square():
     img = np.zeros((480, 640, 3), np.uint8)
     out, used = dynamic_crop(img, face)
     assert used and out.shape == (224, 224, 3)
+
+
+def test_iphone_mov_clips_are_accepted(tmp_path):
+    from driveaware_data.labels import find_videos, parse_clip_name
+    assert parse_clip_name("swathi_texting_day-none_t1.MOV").activity == "texting"
+    assert parse_clip_name("swathi_safe_night-sun_t1.mov").condition == "night-sun"
+    for n in ("a.mp4", "b.MOV", "c.mov", "d.txt", ".hidden.mov"):
+        (tmp_path / n).write_bytes(b"")
+    assert [p.name for p in find_videos(tmp_path)] == ["a.mp4", "b.MOV", "c.mov"]

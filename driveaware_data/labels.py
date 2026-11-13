@@ -47,7 +47,7 @@ MESSAGE_MAX_WORDS = 20
 
 # ------------------------------------------------------------ file names
 CLIP_RE = re.compile(
-    r"^(?P<name>[a-z]+)_(?P<activity>[a-z_]+?)_(?P<condition>(day|night)-(none|clear|sun))_t(?P<take>\d+)\.mp4$"
+    r"^(?P<name>[a-z]+)_(?P<activity>[a-z_]+?)_(?P<condition>(day|night)-(none|clear|sun))_t(?P<take>\d+)\.(?i:mp4|mov)$"
 )
 
 
@@ -57,6 +57,16 @@ class ClipName:
     activity: str
     condition: str
     take: int
+
+
+VIDEO_EXTS = {".mp4", ".mov"}   # Android phones save .mp4, iPhones .MOV
+
+
+def find_videos(folder, recursive: bool = False) -> list:
+    """All clips in a folder, .mp4 or .mov in any case, sorted."""
+    from pathlib import Path
+    it = Path(folder).expanduser().rglob("*") if recursive else Path(folder).expanduser().glob("*")
+    return sorted(p for p in it if p.is_file() and p.suffix.lower() in VIDEO_EXTS and not p.name.startswith("."))
 
 
 def parse_clip_name(filename: str) -> ClipName:

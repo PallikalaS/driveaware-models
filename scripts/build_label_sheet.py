@@ -38,6 +38,7 @@ import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from driveaware_data.gemini_rows import SHEET_COLUMNS, SignalSummary, build_prompt  # noqa: E402
+from driveaware_data.labels import find_videos  # noqa: E402
 from driveaware_data.labels import CONDITIONS, SUBCLASS_TO_APP, SUBCLASSES, assign_split  # noqa: E402
 from driveaware_data.replay import FaceModel, iter_frames, replay_clip  # noqa: E402
 
@@ -119,7 +120,7 @@ def main(argv=None):
     kdir.mkdir(parents=True, exist_ok=True)
     clips = []
     for p in map(lambda x: Path(x).expanduser(), a.inputs):
-        clips += sorted(p.glob("**/*.mp4")) if p.is_dir() else [p]
+        clips += find_videos(p, recursive=True) if p.is_dir() else [p]
     val_dir = Path(a.val_dir).expanduser().resolve() if a.val_dir else None
     # whole clips to val (never frames of the same clip in two splits), per person, reproducible
     val_clips: set[Path] = set()
@@ -149,7 +150,7 @@ def main(argv=None):
         return s
 
     if not clips:
-        ap.error(f"no .mp4 clips found in {a.inputs}")
+        ap.error(f"no .mp4/.mov clips found in {a.inputs}")
     print(f"{len(clips)} clips")
     known = held | val | {"swathi", "bindu", "mahitha", "vanessa"}
     odd = sorted({c.name for c in clips if describe_clip(c)["subject"] not in known})

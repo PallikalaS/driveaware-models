@@ -27,7 +27,8 @@ import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from driveaware_data.crop import FaceFinder, center_crop, dhash, dynamic_crop, hamming, sharpness  # noqa: E402
-from driveaware_data.labels import SUBCLASS_TO_APP, assign_split, map_public_label, parse_clip_name  # noqa: E402
+from driveaware_data.labels import (SUBCLASS_TO_APP, assign_split, find_videos, map_public_label,  # noqa: E402
+                                   parse_clip_name)
 
 FIELDS = ["frame_path", "source", "subject", "clip", "t_s", "condition",
           "subclass", "app_class", "split", "crop_mode", "sharpness"]
@@ -154,7 +155,7 @@ def main(argv=None):
 
     rows = []
     for folder in args.team:
-        for p in sorted(Path(folder).expanduser().glob("*.mp4")):
+        for p in find_videos(folder):
             print(f"clip {p.name}")
             try:
                 rows += process_clip(p, out_dir, args, finder, held_out, val_subjects)
