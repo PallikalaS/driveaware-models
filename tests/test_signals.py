@@ -88,3 +88,17 @@ def test_no_eye_closure_alert_during_yawn():
     e = TemporalEngine(base=BASE)
     ev = run(e, 0, 2500, lambda t: frame(t, ear=0.10, mar=0.8))
     assert [x.type for x in ev] == ["yawn"]
+
+
+def test_yawn_with_eyes_closed_does_not_fire_closure_after_it():
+    from driveaware_data.signals import Baseline, Frame, TemporalEngine
+    e = TemporalEngine(base=Baseline(ear=0.30))
+    ev = []
+    for t in range(0, 2500, 33):
+        ev += e.process(Frame(t, True, ear=0.10, mar=0.8, jaw_open=0.8, eye_blink=0.9))
+    for t in range(2500, 2800, 33):
+        ev += e.process(Frame(t, True, ear=0.10, eye_blink=0.9))
+    for t in range(2800, 4000, 33):
+        ev += e.process(Frame(t, True, ear=0.30))
+    types = [x.type for x in ev]
+    assert "yawn" in types and "eye_closure_long" not in types

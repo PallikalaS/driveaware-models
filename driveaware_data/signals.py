@@ -138,6 +138,7 @@ class TemporalEngine:
         self._last_level: dict[str, int] = {}
         self._close_start = self._yawn_start = self._nod_start = self._gaze_start = None
         self._closure_fired = self._yawn_fired = self._nod_fired = self._gaze_fired = False
+        self._last_mouth_open = -10**12   # eye-closure alert clock restarts after a yawn (app Issue #11)
         self._longest_closure_ms = 0
         self.state = State()
 
@@ -168,6 +169,8 @@ class TemporalEngine:
 
         # mouth first: no eye-closure alert while yawning (eyes squeeze shut in a real yawn)
         mouth_open = f.mar >= th.yawn_mar or f.jaw_open >= th.yawn_jaw_open
+        if mouth_open:
+            self._last_mouth_open = t
 
         # eyes: blink, long closure, PERCLOS (EAR or the eyeBlink blendshape)
         closed = f.ear < base.ear * th.ear_closed_ratio or f.eye_blink >= th.blink_score_closed
@@ -176,7 +179,7 @@ class TemporalEngine:
                 self._close_start = t
                 self._closure_fired = False
                 self._last_level.pop("eye_closure_long", None)
-            dur = (t - self._close_start) / 1000
+            dur = (t - max(self._close_start, self._last_mouth_open)) / 1000
             if not self._closure_fired and not mouth_open and dur >= th.long_closure_s:
                 self._closure_fired = True
                 lvl = 3 if dur >= th.severe_closure_s else 2
