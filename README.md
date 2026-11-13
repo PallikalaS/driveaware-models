@@ -157,12 +157,12 @@ format: system instruction + image + signal line → compact JSON answer, same o
 **Upload and tune (#23, #24, #31):**
 ```
 python scripts/gemini_tuning.py upload --keyframes <Gemini_events>/keyframes --jsonl <Gemini_events>/jsonl
-python scripts/gemini_tuning.py tune          # base gemini-3.5-flash, us-central1, train + val JSONL
+python scripts/gemini_tuning.py tune          # base gemini-3.5-flash, location us, train + val JSONL
 python scripts/gemini_tuning.py status --wait # prints the tuned endpoint and the backend redeploy command
 ```
 `upload` checks every image URI points into the bucket and warns below 100 training rows (Vertex AI
-recommends 100–500). Tuning jobs and tuned endpoints are regional (`us-central1`), so the redeploy
-command sets `VERTEX_LOCATION=us-central1` together with the endpoint.
+recommends 100–500). Gemini 3+ tuning runs on the `us` multi-region endpoint (`us-central1` is only
+for Gemini 2.5 and earlier), and the tuned model is served from `us`, the backend's default location.
 
 **Base vs tuned (#29):** `pip install google-genai`, `gcloud auth application-default login`, then
 ```
