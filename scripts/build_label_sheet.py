@@ -130,7 +130,8 @@ def main(argv=None):
                 subj = describe_clip(c)["subject"]
             except Exception:
                 continue
-            if assign_split(subj, held, val) == "train":
+            in_test_dir = any(p.name.lower() == "team_test_only" for p in c.resolve().parents)
+            if assign_split(subj, held, val) == "train" and not in_test_dir:
                 by_person.setdefault(subj, []).append(c)
         for subj, cs in sorted(by_person.items()):
             cs = sorted(cs)
@@ -138,6 +139,10 @@ def main(argv=None):
             val_clips.update(cs[: max(1, round(len(cs) * a.val_frac))])
 
     def split_of(clip: Path, subject: str) -> str:
+        # Anything inside a Team_test_only folder is test, whatever its name says
+        # (Vanessa's pilot clips are named S01.mp4 ... with no person in the name).
+        if any(p.name.lower() == "team_test_only" for p in clip.resolve().parents):
+            return "test"
         s = assign_split(subject, held, val)
         if s == "train" and (clip in val_clips or (val_dir and val_dir in clip.resolve().parents)):
             return "val"
@@ -146,6 +151,10 @@ def main(argv=None):
     if not clips:
         ap.error(f"no .mp4 clips found in {a.inputs}")
     print(f"{len(clips)} clips")
+    known = held | val | {"swathi", "bindu", "mahitha", "vanessa"}
+    odd = sorted({c.name for c in clips if describe_clip(c)["subject"] not in known})
+    if odd:
+        print(f"! {len(odd)} clips with no team member in the name (split by folder only): {odd[:6]}")
     face = FaceModel(a.model)
     rows = []
 
