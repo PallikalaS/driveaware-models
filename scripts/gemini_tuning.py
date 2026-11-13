@@ -26,7 +26,7 @@ from pathlib import Path
 PROJECT = "driveaware-cs663-swathi"
 BUCKET_DIR = "gs://driveaware-cs663-swathi-data/gemini"
 BASE_MODEL = "gemini-3.5-flash"
-LOCATION = "us-central1"   # tuning jobs and their endpoints are regional
+LOCATION = "us"   # Gemini 3+ tuning: "us"/"eu" multi-region; tuned model is served there too
 MIN_TRAIN = 100            # Vertex AI recommends at least 100-500 examples
 JOB_FILE = Path("tuning_job.txt")
 
