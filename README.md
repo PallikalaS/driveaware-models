@@ -124,8 +124,13 @@ Each clip's first 10 s are used as calibration (the V0x scripts start with 15 s 
 **Gemini label sheet (Bindu labels these rows):**
 ```bash
 python scripts/build_label_sheet.py ~/Drive/DriveAware/Team_raw ~/Drive/DriveAware/Team_test_only \
-  ~/Drive/DriveAware/Team_validation --model face_landmarker.task --out ~/Drive/DriveAware/Gemini_events
+  ~/Drive/DriveAware/Team_validation --val-dir ~/Drive/DriveAware/Team_validation \
+  --model face_landmarker.task --out ~/Drive/DriveAware/Gemini_events
 ```
+`--val-dir`: clips in that folder (Bindu's V01–V03) become **val** rows, so tuning has a validation set
+with only two training people. Adding clips later (e.g. one person's recordings arrive a day late): run
+on just those clips with `--id-prefix b`; it writes `label_sheet_b.csv` with row ids `b0001…`, which you
+append to the Google Sheet without clashing with the first batch.
 Writes `label_sheet.csv` + `keyframes/`. Import the CSV into Google Sheets (File → Import), keep
 `keyframes/` next to it in Drive. Rows come from the rules (`rules`), from activity clips standing in
 for Model A (`clip_label`, model_a conf 0.00 until `model_a_v1.tflite` exists; regenerate these rows

@@ -97,6 +97,11 @@ def main(argv=None):
     ap.add_argument("--confusion-rows", type=int, default=2, help="per non-phone clip")
     ap.add_argument("--held-out", default="mahitha,vanessa")
     ap.add_argument("--val-subjects", default="")
+    ap.add_argument("--val-dir", default="",
+                    help="clips under this folder go to val (e.g. Team_validation: Bindu's V01-V03), "
+                         "so Gemini tuning has a validation set even with only two training people")
+    ap.add_argument("--id-prefix", default="r",
+                    help="row_id prefix; use a new one (e.g. b) when adding clips to an existing sheet")
     ap.add_argument("--seed", type=int, default=663)
     a = ap.parse_args(argv)
 
@@ -109,14 +114,21 @@ def main(argv=None):
     clips = []
     for p in map(lambda x: Path(x).expanduser(), a.inputs):
         clips += sorted(p.glob("**/*.mp4")) if p.is_dir() else [p]
+    val_dir = Path(a.val_dir).expanduser().resolve() if a.val_dir else None
+
+    def split_of(clip: Path, subject: str) -> str:
+        s = assign_split(subject, held, val)
+        if s == "train" and val_dir and val_dir in clip.resolve().parents:
+            return "val"
+        return s
 
     face = FaceModel(a.model)
     rows = []
 
     def add(clip, info, t_s, trigger, level, source, img, summary):
-        rid = f"r{len(rows) + 1:04d}"
+        rid = f"{a.id_prefix}{len(rows) + 1:04d}"
         rows.append({
-            "row_id": rid, "split": assign_split(info["subject"], held, val), "subject": info["subject"],
+            "row_id": rid, "split": split_of(clip, info["subject"]), "subject": info["subject"],
             "clip": clip.name, "condition": info["condition"], "t_s": f"{t_s:.2f}", "trigger": trigger,
             "level": level, "trigger_source": source,
             "keyframe": save_keyframe(img, kdir, f"{rid}_{clip.stem}_{t_s:06.1f}s.jpg"),
@@ -170,7 +182,7 @@ def main(argv=None):
                     add(clip, info, t, "phone_use", 2, "confusion", img,
                         summary_from_state(state_at(t), sun, ("phone_use", 0.0)))
 
-    sheet = out / "label_sheet.csv"
+    sheet = out / ("label_sheet.csv" if a.id_prefix == "r" else f"label_sheet_{a.id_prefix}.csv")
     with sheet.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=SHEET_COLUMNS)
         w.writeheader()
