@@ -73,3 +73,19 @@ def test_label_sheet_end_to_end(tmp_path, monkeypatch):
     sun = next(r for r in rows if r["clip"].startswith("mahitha"))
     assert sun["signal_line"].endswith("sunglasses=yes")
     assert all(r["event"] == "" for r in rows)  # left for the labeler
+
+
+def test_label_sheet_val_dir_and_prefix(tmp_path, monkeypatch):
+    raw, valdir = tmp_path / "Team_raw", tmp_path / "Team_validation"
+    raw.mkdir(); valdir.mkdir()
+    make_clip(raw / "bindu_safe_day-none_t1.mp4")
+    make_clip(valdir / "V01_bindu_day-none_t1.mp4")
+    monkeypatch.setattr(build_label_sheet, "FaceModel", StubFace)
+    out = tmp_path / "out"
+    build_label_sheet.main([str(raw), str(valdir), "--model", "x", "--out", str(out), "--calib-s", "3",
+                            "--val-dir", str(valdir), "--id-prefix", "b"])
+    rows = list(csv.DictReader((out / "label_sheet_b.csv").open()))
+    assert rows and all(r["row_id"].startswith("b") for r in rows)
+    assert {r["split"] for r in rows if r["clip"].startswith("V01")} == {"val"}
+    assert {r["split"] for r in rows if r["clip"].startswith("bindu")} <= {"train"}
+    assert not (out / "label_sheet.csv").exists()
