@@ -100,6 +100,9 @@ def main(argv=None):
     ap.add_argument("--val-dir", default="",
                     help="clips under this folder go to val (e.g. Team_validation: Bindu's V01-V03), "
                          "so Gemini tuning has a validation set even with only two training people")
+    ap.add_argument("--val-frac", type=float, default=0.0,
+                    help="put this share of each training person's clips (whole clips, chosen by seed) "
+                         "in val; use when Team_validation is empty")
     ap.add_argument("--id-prefix", default="r",
                     help="row_id prefix; use a new one (e.g. b) when adding clips to an existing sheet")
     ap.add_argument("--seed", type=int, default=663)
@@ -118,10 +121,25 @@ def main(argv=None):
     for p in map(lambda x: Path(x).expanduser(), a.inputs):
         clips += sorted(p.glob("**/*.mp4")) if p.is_dir() else [p]
     val_dir = Path(a.val_dir).expanduser().resolve() if a.val_dir else None
+    # whole clips to val (never frames of the same clip in two splits), per person, reproducible
+    val_clips: set[Path] = set()
+    if a.val_frac > 0:
+        by_person: dict[str, list[Path]] = {}
+        for c in clips:
+            try:
+                subj = describe_clip(c)["subject"]
+            except Exception:
+                continue
+            if assign_split(subj, held, val) == "train":
+                by_person.setdefault(subj, []).append(c)
+        for subj, cs in sorted(by_person.items()):
+            cs = sorted(cs)
+            random.Random(f"{a.seed}-{subj}").shuffle(cs)
+            val_clips.update(cs[: max(1, round(len(cs) * a.val_frac))])
 
     def split_of(clip: Path, subject: str) -> str:
         s = assign_split(subject, held, val)
-        if s == "train" and val_dir and val_dir in clip.resolve().parents:
+        if s == "train" and (clip in val_clips or (val_dir and val_dir in clip.resolve().parents)):
             return "val"
         return s
 
