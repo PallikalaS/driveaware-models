@@ -7,6 +7,19 @@ Gemini fine-tuning, evaluation and system-test matching. App code lives in
 > Images, videos and model binaries never go to GitHub — they live in the shared Drive folder
 > `DriveAware/` (and the GCS bucket for tuning). Commit CSVs, notebooks (with outputs) and results.
 
+## Pipeline end to end
+
+| Step | Command | Output |
+|---|---|---|
+| Model A data | `scripts/extract_frames.py` (team clips + State Farm) | `Frames/` 224 px crops + `labels.csv` |
+| Model A train + eval | `notebooks/model_a_training.ipynb` (Colab, GPU) | CLIP / frozen / fine-tuned metrics, `model_a.tflite` in `Results/model_a/` |
+| Gemini label sheet | `scripts/build_label_sheet.py` → `scripts/trim_label_sheet.py` | `label_sheet_trimmed.csv` + keyframes for Bindu |
+| Gemini tuning data | `scripts/sheet_to_jsonl.py` (validates every row) | `train.jsonl`, `val.jsonl`, `test.jsonl` |
+| Gemini tuning | `scripts/gemini_tuning.py upload / tune / status` | tuned endpoint + backend redeploy command |
+| Gemini eval | `eval/gemini_eval.py run` (base, tuned) → `compare` | `comparison.md`, predictions CSVs |
+| Thresholds | `scripts/tune_thresholds.py` on V01–V03 | `thresholds.csv` (start vs suggested) |
+| System test | `eval/match_events.py` on S01–S08 logs | recall, precision, false alarms / 10 min, delay |
+
 ## Layout
 
 | Path | What | Owner |
@@ -19,8 +32,14 @@ Gemini fine-tuning, evaluation and system-test matching. App code lives in
 | `scripts/replay_clip.py` | Replay recorded clips through Model C + rules → per-frame CSV + app-format event log (threshold tuning) | Swathi wrote · Vanessa runs |
 | `scripts/build_label_sheet.py` | Clips → Gemini label-sheet rows (keyframe + exact backend signal line) | Swathi wrote · Swathi/Bindu run |
 | `eval/match_events.py` | App event log vs scripted session CSV → recall, precision, false alarms/10 min, delay | Swathi wrote · Vanessa runs |
+| `scripts/trim_label_sheet.py` | Right-size the built sheet: pilot rows to test, stratified test sample | Swathi |
+| `driveaware_data/gemini_rows.py` | Backend signal line, system instruction, labeling-guide checks (train == serve) | Swathi |
+| `scripts/sheet_to_jsonl.py` | Final label sheet → Vertex AI tuning JSONL | Swathi |
+| `scripts/gemini_tuning.py` | Upload to the bucket, start and watch the tuning job | Swathi |
+| `eval/gemini_eval.py` | Base vs tuned Gemini on the held-out rows | Swathi wrote · Bindu runs |
+| `scripts/tune_thresholds.py` | Score threshold values on V01–V03 against Vanessa's scripts | Swathi wrote · Vanessa reviews |
 | `infra/gcp_setup.sh` | Project, billing budget, APIs, bucket, service account, teammate IAM | Swathi |
-| `notebooks/` | Model A training notebook, Gemini tuning notebook (next) | Swathi wrote · Mahitha/Bindu run |
+| `notebooks/model_a_training.ipynb` | Model A training + CLIP / frozen baselines + evaluation (Colab) | Swathi wrote · Mahitha runs |
 | `schema/`, `results/` | Gemini JSON schema; committed metrics, curves, confusion matrices | |
 | `tests/` | `pytest -q` | |
 
@@ -51,8 +70,8 @@ python scripts/extract_frames.py \
   --face-model blaze_face_short_range.tflite
 ```
 Then fix the `subclass` column in `Frames/labels.csv`, and commit `labels.csv` + `class_counts.csv`
-to `data/`. Clip names must be `name_activity_condition_tN.mp4` (lowercase); badly named clips are
-skipped with a message.
+to `data/`. Clip names must be `name_activity_condition_tN.mp4` (lowercase; `.mov` / `.MOV` from
+iPhones also work); badly named clips are skipped with a message.
 
 **Public-label mapping** (`driveaware_data/labels.py`): State Farm c0 safe, c1/c3 texting,
 c2/c4 phone_ear, c6 drinking_cup, c8 hand_forehead; c5 radio, c7 reaching behind, c9 passenger are
@@ -136,10 +155,6 @@ Writes `label_sheet.csv` + `keyframes/`. Import the CSV into Google Sheets (File
 for Model A (`clip_label`, model_a conf 0.00 until `model_a_v1.tflite` exists; regenerate these rows
 then) and phone-use triggers on non-phone frames as false-alarm candidates (`confusion`). Held-out
 members' clips (incl. Vanessa's pilot recordings in `Team_test_only/pilot/`) become **test** rows.
-
-## Still to build (in plan order)
-- Model A training notebook (Model Maker EfficientNet-Lite0) + CLIP zero-shot and frozen-backbone baselines; Keras MobileNetV3 fallback
-- Model A evaluation script
 
 ## Gemini tuning data and evaluation
 
