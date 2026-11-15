@@ -32,7 +32,7 @@ from driveaware_data.labels import (SUBCLASS_TO_APP, assign_split, find_videos, 
 
 FIELDS = ["frame_path", "source", "subject", "clip", "t_s", "condition",
           "subclass", "app_class", "split", "crop_mode", "sharpness"]
-INTRO_S = 3.0
+INTRO_S = 5.0   # default for --skip-start-s: 3 s looking ahead + ~2 s to start the activity
 IMG_EXT = {".jpg", ".jpeg", ".png"}
 
 
@@ -43,8 +43,46 @@ def crop_frame(frame, mode, finder):
     return out, ("dynamic" if used_face else "center_fallback")
 
 
-def process_clip(path: Path, out_dir: Path, args, finder, held_out, val_subjects):
+def load_spans(path) -> dict:
+    """Optional activity_spans.csv: clip,start_s,end_s (several rows per clip allowed).
+    For a listed clip only frames inside a span are kept, because in some clips the activity
+    happens on and off and the frames in between show normal driving."""
+    spans: dict = {}
+    if not path:
+        return spans
+    with open(Path(path).expanduser(), newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            stem = Path(r["clip"].strip()).stem.lower()
+            spans.setdefault(stem, []).append((float(r["start_s"]), float(r["end_s"])))
+    return spans
+
+
+def team_val_clips(paths, held_out, val_subjects, frac: float, seed: int = 663) -> set:
+    """Whole clips (never frames of one clip in two splits) per training person go to val, so
+    Model A's validation score reflects our phone camera, not only State Farm."""
+    import random
+    by_person: dict = {}
+    for p in paths:
+        try:
+            c = parse_clip_name(p.name)
+        except ValueError:
+            continue
+        if assign_split(c.name, held_out, val_subjects) == "train":
+            by_person.setdefault(c.name, []).append(p)
+    out = set()
+    if frac <= 0:
+        return out
+    for person, ps in sorted(by_person.items()):
+        ps = sorted(ps)
+        random.Random(f"{seed}-{person}").shuffle(ps)
+        out.update(ps[: max(1, round(len(ps) * frac))])
+    return out
+
+
+def process_clip(path: Path, out_dir: Path, args, finder, held_out, val_subjects,
+                 spans=None, force_val=False):
     clip = parse_clip_name(path.name)
+    keep = (spans or {}).get(path.stem.lower())
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():
         print(f"  ! cannot open {path.name}", file=sys.stderr)
@@ -53,6 +91,8 @@ def process_clip(path: Path, out_dir: Path, args, finder, held_out, val_subjects
     step = max(1, round(src_fps / args.fps))
     rows, last_hash, idx = [], None, 0
     split = assign_split(clip.name, held_out, val_subjects)
+    if force_val and split == "train":
+        split = "val"
     dest = out_dir / "team" / split / clip.activity
     dest.mkdir(parents=True, exist_ok=True)
     while True:
@@ -63,7 +103,9 @@ def process_clip(path: Path, out_dir: Path, args, finder, held_out, val_subjects
         idx += 1
         if (idx - 1) % step:
             continue
-        if clip.activity != "safe" and t < INTRO_S:
+        if clip.activity != "safe" and t < args.skip_start_s:
+            continue
+        if keep is not None and clip.activity != "safe" and not any(a <= t <= b for a, b in keep):
             continue
         img, mode = crop_frame(frame, args.crop, finder)
         sharp = sharpness(img)
@@ -145,6 +187,11 @@ def main(argv=None):
     ap.add_argument("--held-out", default="mahitha,vanessa")
     ap.add_argument("--val-subjects", default="", help="team members used for validation")
     ap.add_argument("--face-model", help="optional MediaPipe blaze_face_short_range.tflite")
+    ap.add_argument("--skip-start-s", type=float, default=INTRO_S,
+                    help="drop the first seconds of every non-safe clip (people look ahead first)")
+    ap.add_argument("--spans", help="optional activity_spans.csv (clip,start_s,end_s): keep only those times")
+    ap.add_argument("--team-val-frac", type=float, default=0.15,
+                    help="share of each training person's clips (whole clips) used as validation")
     args = ap.parse_args(argv)
 
     out_dir = Path(args.out).expanduser()
@@ -154,11 +201,17 @@ def main(argv=None):
     finder = FaceFinder(args.face_model)
 
     rows = []
+    spans = load_spans(args.spans)
+    all_clips = [p for folder in args.team for p in find_videos(folder)]
+    val_clips = team_val_clips(all_clips, held_out, val_subjects, args.team_val_frac)
+    if val_clips:
+        print(f"team validation clips ({len(val_clips)}): " + ", ".join(sorted(p.name for p in val_clips)))
     for folder in args.team:
         for p in find_videos(folder):
             print(f"clip {p.name}")
             try:
-                rows += process_clip(p, out_dir, args, finder, held_out, val_subjects)
+                rows += process_clip(p, out_dir, args, finder, held_out, val_subjects,
+                                     spans=spans, force_val=p in val_clips)
             except ValueError as e:
                 print(f"  ! skipped: {e}", file=sys.stderr)
     if args.public:
