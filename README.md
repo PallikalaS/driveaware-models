@@ -69,6 +69,12 @@ python scripts/extract_frames.py \
   --out ~/Drive/DriveAware/Frames --crop dynamic --fps 2 --held-out mahitha,vanessa \
   --face-model blaze_face_short_range.tflite
 ```
+Options: `--skip-start-s 5` (default; drops the look-ahead seconds at the start of every non-safe
+clip), `--team-val-frac 0.15` (default; whole team clips per training person go to val, so the
+validation score reflects our phone camera, not only State Farm), `--spans activity_spans.csv`
+(`clip,start_s,end_s`, several rows per clip: keep only frames where the activity is really
+happening, for clips where it happens on and off).
+
 Then fix the `subclass` column in `Frames/labels.csv`, and commit `labels.csv` + `class_counts.csv`
 to `data/`. Clip names must be `name_activity_condition_tN.mp4` (lowercase; `.mov` / `.MOV` from
 iPhones also work); badly named clips are skipped with a message.

@@ -63,17 +63,17 @@ def head_pose(m):
 # ------------------------------------------------------------------ settings
 @dataclass
 class Thresholds:
-    ear_closed_ratio: float = 0.70
+    ear_closed_ratio: float = 0.60   # tuned on V01-V04 (start 0.70)
     blink_score_closed: float = 0.50   # eyeBlink blendshape >= this also counts as closed
     long_closure_s: float = 1.0
     severe_closure_s: float = 1.0      # labeling_guide: any closure >= 1.0 s is high
     blink_max_s: float = 0.5
     perclos_window_s: float = 60.0
-    perclos_high: float = 0.15
-    yawn_mar: float = 0.60
+    perclos_high: float = 0.20       # tuned (start 0.15)
+    yawn_mar: float = 0.45           # tuned (start 0.60)
     yawn_jaw_open: float = 0.55
-    yawn_min_s: float = 1.5
-    nod_pitch_deg: float = 15.0
+    yawn_min_s: float = 0.8          # tuned (start 1.5)
+    nod_pitch_deg: float = 20.0      # tuned (start 15)
     nod_min_s: float = 0.4
     gaze_yaw_deg: float = 30.0
     gaze_pitch_deg: float = 20.0
@@ -139,6 +139,7 @@ class TemporalEngine:
         self._close_start = self._yawn_start = self._nod_start = self._gaze_start = None
         self._closure_fired = self._yawn_fired = self._nod_fired = self._gaze_fired = False
         self._last_mouth_open = -10**12   # eye-closure alert clock restarts after a yawn (app Issue #11)
+        self._last_head_away = -10**12    # … and after the head was turned far away (app v0.9)
         self._longest_closure_ms = 0
         self.state = State()
 
@@ -171,6 +172,11 @@ class TemporalEngine:
         mouth_open = f.mar >= th.yawn_mar or f.jaw_open >= th.yawn_jaw_open
         if mouth_open:
             self._last_mouth_open = t
+        # head turned far up / down / sideways: eyes look narrow even when open (app v0.9)
+        pd = f.pitch - base.pitch_deg
+        head_away = abs(f.yaw - base.yaw_deg) >= th.gaze_yaw_deg or pd >= th.gaze_pitch_deg or pd <= -th.nod_pitch_deg
+        if head_away:
+            self._last_head_away = t
 
         # eyes: blink, long closure, PERCLOS (EAR or the eyeBlink blendshape)
         closed = f.ear < base.ear * th.ear_closed_ratio or f.eye_blink >= th.blink_score_closed
@@ -179,14 +185,14 @@ class TemporalEngine:
                 self._close_start = t
                 self._closure_fired = False
                 self._last_level.pop("eye_closure_long", None)
-            dur = (t - max(self._close_start, self._last_mouth_open)) / 1000
-            if not self._closure_fired and not mouth_open and dur >= th.long_closure_s:
+            dur = (t - max(self._close_start, self._last_mouth_open, self._last_head_away)) / 1000
+            if not self._closure_fired and not mouth_open and not head_away and dur >= th.long_closure_s:
                 self._closure_fired = True
                 lvl = 3 if dur >= th.severe_closure_s else 2
                 e = self._fire("eye_closure_long", t, lvl, f"closed {dur:.1f}s")
                 if e:
                     out.append(e)
-            if (self._closure_fired and not mouth_open and dur >= th.severe_closure_s
+            if (self._closure_fired and not mouth_open and not head_away and dur >= th.severe_closure_s
                     and self._last_level.get("eye_closure_long", 0) < 3):
                 self._last_level["eye_closure_long"] = 3
                 out.append(Event("eye_closure_long", t / 1000, 3, f"closed {dur:.1f}s"))

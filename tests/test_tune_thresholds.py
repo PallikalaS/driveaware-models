@@ -32,9 +32,10 @@ def match_events_cols():
 
 def test_tuning_finds_a_yawn_threshold_that_catches_the_scripted_yawn():
     s = [session()]
-    default = tt.score(s, Thresholds(), 1.0, 3.0)
+    old = Thresholds(yawn_mar=0.60, yawn_min_s=1.5)   # the pre-tuning start values
+    default = tt.score(s, old, 1.0, 3.0)
     assert default["yawn_recall"] == 0.0 and default["eye_closure_long_recall"] == 1.0
-    table, best_th, best = tt.tune(s, Thresholds(), rounds=1, pre=1.0, post=3.0)
+    table, best_th, best = tt.tune(s, old, rounds=1, pre=1.0, post=3.0)
     assert best["yawn_recall"] == 1.0 and best["false_alarms"] == 0
     assert best_th.yawn_mar <= 0.50 or best_th.yawn_jaw_open <= 0.0
     assert len(table) == 1 + sum(len(v) for v in tt.GRID.values())
