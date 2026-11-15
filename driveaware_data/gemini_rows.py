@@ -100,7 +100,7 @@ def validate_answer(a: dict, trigger: str, signals: dict[str, str]) -> list[str]
         err.append("confirmed must be 'no' only for false_alarm and 'yes' otherwise")
     f = lambda k: float(signals.get(k, "0") or 0)  # noqa: E731
     measured = trigger in MEASURED_TRIGGERS or f("longest_closure_s") >= 1.0 or \
-        f("perclos") > 0.15 or f("nods_5min") >= 1
+        f("perclos") >= 0.20 or f("nods_5min") >= 1   # perclosHigh (tuned, was 0.15)
     if measured and ev == "false_alarm":
         err.append("authority rule: measured signal can never be false_alarm")
     if trigger in MEASURED_TRIGGERS and ev != "drowsy":
