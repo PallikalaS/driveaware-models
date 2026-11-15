@@ -77,10 +77,14 @@ def tune(a, make_client=client) -> int:
     from google.genai import types
     cfg = types.CreateTuningJobConfig(
         tuned_model_display_name=a.name,
-        validation_dataset=types.TuningDataset(gcs_uri=f"{a.bucket_dir}/val.jsonl"),
+        # newer google-genai wants TuningValidationDataset here; older versions only have TuningDataset
+        validation_dataset=getattr(types, "TuningValidationDataset", types.TuningDataset)(gcs_uri=f"{a.bucket_dir}/val.jsonl"),
         **({"epoch_count": a.epochs} if a.epochs else {}),
     )
-    job = make_client(a.location).tunings.tune(
+    # keep the client in a variable: a temporary Client is garbage-collected and closes its
+    # HTTP connection mid-call ("Cannot send a request, as the client has been closed")
+    c = make_client(a.location)
+    job = c.tunings.tune(
         base_model=a.base_model,
         training_dataset=types.TuningDataset(gcs_uri=f"{a.bucket_dir}/train.jsonl"),
         config=cfg,
