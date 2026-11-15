@@ -98,3 +98,14 @@ def test_system_instruction_matches_backend_copy():
         src = backend.read_text()
         body = re.search(r"SYSTEM_INSTRUCTION = \((.*?)\n\)", src, re.S).group(1)
         assert "".join(re.findall(r'"(.*?)"', body)) == SYSTEM_INSTRUCTION
+
+
+def test_skip_blank_rows_but_not_half_filled(tmp_path, capsys):
+    sheet = tmp_path / "sheet.csv"
+    blank = row(row_id="r2", event="", confirmed="", severity="", message="", action="", labeler="")
+    write_sheet(sheet, [row(), blank, row(row_id="r3", split="val")])
+    assert sheet_to_jsonl.main([str(sheet), "--image-prefix", "gs://b/k", "--out", str(tmp_path / "o"), "--skip-blank"]) == 0
+    assert "skipping 1 blank rows: r2" in capsys.readouterr().out
+    half = row(row_id="r4", message="", labeler="")          # started but not finished: must stop
+    write_sheet(sheet, [row(), half])
+    assert sheet_to_jsonl.main([str(sheet), "--image-prefix", "gs://b/k", "--out", str(tmp_path / "o2"), "--skip-blank"]) == 1

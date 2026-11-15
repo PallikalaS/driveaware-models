@@ -36,11 +36,21 @@ def main(argv=None) -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--keyframes", help="local keyframes folder: check every file exists")
     ap.add_argument("--allow-clip-label", action="store_true", help="accept Model A stand-in rows")
+    ap.add_argument("--skip-blank", action="store_true",
+                    help="skip rows left completely blank on purpose (no answer and no labeler); "
+                         "half-filled rows still stop the run")
     a = ap.parse_args(argv)
     if not a.image_prefix.startswith("gs://"):
         ap.error("--image-prefix must be a gs:// path")
 
     rows = list(csv.DictReader(open(Path(a.sheet).expanduser(), newline="", encoding="utf-8-sig")))
+    rows = [r for r in rows if (r.get("row_id") or "").strip() and r.get("row_id", "").strip() != "row_id"]
+    if a.skip_blank:
+        blank = [r for r in rows if not any((r.get(k) or "").strip()
+                                           for k in ("event", "confirmed", "severity", "message", "action", "labeler"))]
+        if blank:
+            print(f"skipping {len(blank)} blank rows: " + ", ".join(r["row_id"] for r in blank))
+        rows = [r for r in rows if r not in blank]
     bad = []
     for i, r in enumerate(rows, start=2):           # row 1 is the header in Sheets
         err = validate_row(r, a.allow_clip_label)
