@@ -98,9 +98,10 @@ def validate_answer(a: dict, trigger: str, signals: dict[str, str]) -> list[str]
     ev, sev, act, msg = a["event"], a["severity"], a["action"], a.get("message", "")
     if (a["confirmed"] == "no") != (ev == "false_alarm"):
         err.append("confirmed must be 'no' only for false_alarm and 'yes' otherwise")
-    f = lambda k: float(signals.get(k, "0") or 0)  # noqa: E731
-    measured = trigger in MEASURED_TRIGGERS or f("longest_closure_s") >= 1.0 or \
-        f("perclos") >= 0.20 or f("nods_5min") >= 1   # perclosHigh (tuned, was 0.15)
+    # Same as the backend's apply_authority_rule: the rule is about the TRIGGER. A phone/drinking
+    # trigger can still be a false alarm when the background PERCLOS is high (hands near the face
+    # during drinking or eye rubs push PERCLOS up), as Bindu labeled them.
+    measured = trigger in MEASURED_TRIGGERS
     if measured and ev == "false_alarm":
         err.append("authority rule: measured signal can never be false_alarm")
     if trigger in MEASURED_TRIGGERS and ev != "drowsy":

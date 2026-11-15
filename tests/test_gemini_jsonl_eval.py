@@ -109,3 +109,9 @@ def test_skip_blank_rows_but_not_half_filled(tmp_path, capsys):
     half = row(row_id="r4", message="", labeler="")          # started but not finished: must stop
     write_sheet(sheet, [row(), half])
     assert sheet_to_jsonl.main([str(sheet), "--image-prefix", "gs://b/k", "--out", str(tmp_path / "o2"), "--skip-blank"]) == 1
+
+
+def test_activity_false_alarm_with_high_background_perclos_is_valid():
+    line = build_prompt("phone_use", 2, SignalSummary(perclos=0.45))
+    assert validate_row(row(trigger="phone_use", signal_line=line, event="false_alarm", confirmed="no",
+                            severity="low", action="none", message="No alert needed.")) == []
