@@ -3,7 +3,7 @@
 Owner: Bindu. Second checker: Mahitha (50-row check).
 Use this guide for every row of the Gemini label sheet. Each row is one triggered event: a 512 px face keyframe plus a signal summary. You write the answer we want the fine-tuned Gemini to give.
 
-Thresholds below come from the approved proposal (Section 3). Signal field names match the signal line in driveaware-app `backend/app/logic.py` (`build_prompt`). If Vanessa's tuned values in thresholds.csv change them, update this guide before labeling more rows.
+PERCLOS uses the tuned threshold of 0.20 (Vanessa's tuning on V01–V04, final on Nov 14; the app, backend and label checks compare it as ≥ 0.20). Signal field names match the signal line in driveaware-app `backend/app/logic.py` (`build_prompt`).
 
 ## 1. Columns and allowed words
 
@@ -25,7 +25,7 @@ Use these words exactly. Lowercase, no spaces, no other values. Swathi's JSON sc
 When the trigger is a **measured signal**, the answer is **never `false_alarm`**:
 
 - eye closure of 1.0 s or more (`eye_closure_long`, or `longest_closure_s` ≥ 1.0)
-- PERCLOS above threshold (`perclos_high`, `perclos` > 0.15)
+- PERCLOS at or above threshold (`perclos_high`, `perclos` ≥ 0.20)
 - nodding (`nod`, or `nods_5min` ≥ 1)
 
 Even if the keyframe shows open eyes, trust the signal. A single frame can miss a closure.
@@ -52,11 +52,11 @@ If two things happen at once, label the **more dangerous** one: drowsy > distrac
 
 | Event | Condition | severity | action |
 |---|---|---|---|
-| drowsy | any eye closure ≥ 1.0 s, or a nod while PERCLOS > 0.15 | high | pull_over_now |
-| drowsy | PERCLOS > 0.15 (with or without yawns), or a nod alone | medium | take_break_soon |
-| drowsy | 3+ yawns in 5 min **and** PERCLOS > 0.15 | medium | take_break_soon |
-| early_fatigue | 1 to 2 yawns in 5 min, or a face_touch trigger, PERCLOS ≤ 0.15, no closure ≥ 1.0 s | low | take_break_soon |
-| early_fatigue | 3+ yawns in 5 min (`yawns_5min` ≥ 3), with or without face_touch, PERCLOS ≤ 0.15 | medium | take_break_soon |
+| drowsy | any eye closure ≥ 1.0 s, or a nod while PERCLOS ≥ 0.20 | high | pull_over_now |
+| drowsy | PERCLOS ≥ 0.20 (with or without yawns), or a nod alone | medium | take_break_soon |
+| drowsy | 3+ yawns in 5 min **and** PERCLOS ≥ 0.20 | medium | take_break_soon |
+| early_fatigue | 1 to 2 yawns in 5 min, or a face_touch trigger, PERCLOS < 0.20, no closure ≥ 1.0 s | low | take_break_soon |
+| early_fatigue | 3+ yawns in 5 min (`yawns_5min` ≥ 3), with or without face_touch, PERCLOS < 0.20 | medium | take_break_soon |
 | distracted_phone | phone held to ear | medium | refocus |
 | distracted_phone | texting or looking at phone in hand | high | refocus |
 | distracted_gaze | eyes or head off road 2 to 4 s | low | refocus |
@@ -67,8 +67,8 @@ If two things happen at once, label the **more dangerous** one: drowsy > distrac
 
 **Sunglasses (`sunglasses=yes`):** the eyes can't be measured reliably, so judge severity from yawns, nods and face touches, not from `perclos` or `longest_closure_s`.
 
-- If the trigger is `eye_closure_long` or `perclos_high`, still label `drowsy` and `confirmed=yes` (authority rule), but **cap severity at `medium`** with action `take_break_soon`.
-- The message must not mention closed eyes.
+- The app no longer sends eye events (`eye_closure_long`, `perclos_high`) when sunglasses are detected, so if one of these rows appears with `sunglasses=yes`, leave it blank (skip). Keep and label yawn, nod, gaze and activity rows.
+- For nod rows with sunglasses, cap severity at `medium` (take_break_soon), and the message must not mention closed eyes.
 
 ## 5. Writing the message
 
@@ -94,5 +94,5 @@ These signal lines are **made-up examples** to show how the rules apply. They ar
 | 8 | trigger=gaze_away gaze_away_s=5.0 (keyframe: looking at passenger seat) | distracted_gaze | yes | medium | refocus | Eyes back on the road, please. |
 | 9 | trigger=gaze_away gaze_away_s=2.3 (keyframe: head turned to side mirror) | false_alarm | no | low | none | No alert needed. |
 | 10 | trigger=drinking model_a=drinking:0.78 (keyframe: bottle at mouth) | drinking | yes | low | refocus | Keep at least one hand on the wheel while you drink. |
-| 11 | trigger=perclos_high perclos=0.24 yawns_5min=1 sunglasses=yes (keyframe: dark glasses, head upright) | drowsy | yes | medium | take_break_soon | You seem tired, so plan a break at the next safe stop. |
+| 11 | trigger=nod nods_5min=2 perclos=0.00 sunglasses=yes (keyframe: dark glasses, head dropping) | drowsy | yes | medium | take_break_soon | Your head dropped forward, so consider taking a break soon. |
 | 12 | trigger=face_touch model_a=face_touch:0.80 yawns_5min=0 perclos=0.07 sunglasses=no (keyframe: rubbing eyes) | early_fatigue | yes | low | take_break_soon | You seem a little tired, so consider a short break soon. |
