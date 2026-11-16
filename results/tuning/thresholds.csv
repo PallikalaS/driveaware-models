@@ -1,0 +1,17 @@
+threshold,app_setting,start,suggested,changed,final
+ear_closed_ratio,earClosedRatio,0.7,0.6,yes,0.6
+blink_score_closed,blinkScoreClosed,0.5,0.5,,0.5
+long_closure_s,longClosureS,1,1,,1
+severe_closure_s,severeClosureS,1,1,,1
+blink_max_s,blinkMaxS,0.5,0.5,,0.5
+perclos_window_s,perclosWindowS,60,60,,60
+perclos_high,perclosHigh,0.15,0.2,yes,0.2
+yawn_mar,yawnMar,0.6,0.45,yes,0.45
+yawn_jaw_open,yawnJawOpen,0.55,0.55,,0.55
+yawn_min_s,yawnMinS,1.5,0.8,yes,0.8
+nod_pitch_deg,nodPitchDeg,15,20,yes,20
+nod_min_s,nodMinS,0.4,0.4,,0.4
+gaze_yaw_deg,gazeYawDeg,30,30,,30
+gaze_pitch_deg,gazePitchDeg,20,20,,20
+gaze_max_s,gazeMaxS,2,2,,2
+refractory_s,refractoryS,10,10,,10
