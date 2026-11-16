@@ -1,0 +1,3 @@
+run,arch,label_level,classes,epochs,frozen_epochs,batch,lr,train_n,val_acc,val_macro_f1,test_acc,time
+run01,MobileNetV3-Small (Keras),app_class,drinking|face_touch|phone_use|safe_driving,15,5,32,0.001,9339,0.903,0.871,0.26,2026-11-13 00:47
+run02,MobileNetV3-Small (Keras),app_class,drinking|face_touch|phone_use|safe_driving|smoking,15,5,32,0.001,12359,0.773,0.569,0.401,2026-11-15 19:56

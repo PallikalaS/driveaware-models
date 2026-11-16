@@ -1,0 +1,7 @@
+model,split,n,unseen_class_n,accuracy,macro_f1
+clip_zeroshot,val,1699,0,0.54,0.433
+clip_zeroshot,test,3516,0,0.547,0.457
+frozen,val,1699,0,0.536,0.312
+frozen,test,3516,0,0.325,0.218
+finetuned,val,1699,0,0.773,0.569
+finetuned,test,3516,0,0.401,0.279

@@ -1,0 +1,11 @@
+recorded subclass,drinking,face_touch,phone_use,safe_driving,smoking
+safe,37,291,253,4,6
+phone_ear,118,0,60,0,0
+texting,15,47,342,4,0
+phone_in_hand,13,63,32,0,0
+drinking_cup,304,118,213,2,1
+drinking_bottle,87,69,49,21,0
+smoking,33,129,99,0,0
+eye_rub,65,276,276,2,5
+face_scratch,18,143,80,0,0
+hand_forehead,12,162,67,0,0
