@@ -24,6 +24,8 @@ inside [start_s - pre, end_s + post]. Detection delay = alert_t - start_s.
 
   python eval/match_events.py --script tests/scripts/S01.csv --log Test_sessions/S01_log.csv
   python eval/match_events.py --script-dir tests/scripts --log-dir Test_sessions --out results/system
+  ablation runs (session id typed as S01-rules / S01-modelA in the app):
+  python eval/match_events.py --script-dir tests/scripts --log-dir Test_sessions --tag=-rules --out results/system_rules
 """
 from __future__ import annotations
 
@@ -192,6 +194,8 @@ def main(argv=None):
     ap.add_argument("--pre", type=float, default=1.0, help="s before start_s that still counts")
     ap.add_argument("--post", type=float, default=3.0, help="s after end_s that still counts")
     ap.add_argument("--out", default="results/system")
+    ap.add_argument("--tag", default="", help="ablation logs: '-rules' matches S01-rules_log_*.csv; "
+                                               "default matches only the normal S01_log_*.csv")
     a = ap.parse_args(argv)
 
     pairs = []
@@ -199,11 +203,14 @@ def main(argv=None):
         pairs.append((Path(a.script), Path(a.log)))
     elif a.script_dir and a.log_dir:
         for s in sorted(Path(a.script_dir).glob("S*.csv")):
-            logs = sorted(Path(a.log_dir).glob(f"{s.stem}*log*.csv"))
+            # exact prefix: S01_log_*.csv must not pick up the ablation runs S01-rules_log_*.csv
+            logs = sorted(Path(a.log_dir).glob(f"{s.stem}{a.tag}_log*.csv"))
             if logs:
-                pairs.append((s, logs[0]))
+                if len(logs) > 1:
+                    print(f"! {len(logs)} logs for {s.stem}{a.tag}; using the newest: {logs[-1].name}")
+                pairs.append((s, logs[-1]))
             else:
-                print(f"! no log for {s.name} (expected {s.stem}_log.csv)")
+                print(f"- no log for {s.name} (expected {s.stem}{a.tag}_log_*.csv)")
     else:
         ap.error("give --script + --log, or --script-dir + --log-dir")
 
