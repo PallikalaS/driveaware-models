@@ -74,6 +74,10 @@ def client(location: str):
 
 
 def tune(a, make_client=client) -> int:
+    if not a.i_accept_cost:
+        raise SystemExit("STOP: a Gemini 3.5 Flash tuning job is expensive. Our Nov 18 re-tune (291 examples, "
+                         "automatic epochs) used ~13M training tokens and cost $130. Do not re-tune; point the "
+                         "backend at the base model instead. To really start one, add --i-accept-cost.")
     from google.genai import types
     cfg = types.CreateTuningJobConfig(
         tuned_model_display_name=a.name,
@@ -127,6 +131,7 @@ def main(argv=None) -> int:
     u = sub.add_parser("upload"); u.add_argument("--keyframes", required=True); u.add_argument("--jsonl", required=True)
     u.add_argument("--dry-run", action="store_true")
     t = sub.add_parser("tune"); t.add_argument("--base-model", default=BASE_MODEL)
+    t.add_argument("--i-accept-cost", action="store_true", help="required: tuning cost ~$130 per job here")
     t.add_argument("--name", default="driveaware-verifier-v1"); t.add_argument("--epochs", type=int, default=0,
                                                                               help="0 = Vertex AI default for the data size")
     s = sub.add_parser("status"); s.add_argument("--job", default=""); s.add_argument("--wait", action="store_true")

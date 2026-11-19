@@ -57,7 +57,12 @@ def test_tune_and_status(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     tun = FakeTunings()
     mk = lambda loc: pytypes.SimpleNamespace(tunings=tun)  # noqa: E731
-    a = gt.argparse.Namespace(bucket_dir=B, location="us", base_model="gemini-3.5-flash", name="v1", epochs=0)
+    a = gt.argparse.Namespace(bucket_dir=B, location="us", base_model="gemini-3.5-flash", name="v1", epochs=0,
+                              i_accept_cost=False)
+    with pytest.raises(SystemExit):          # refuses without the cost flag
+        gt.tune(a, make_client=mk)
+    assert tun.calls == []
+    a.i_accept_cost = True
     assert gt.tune(a, make_client=mk) == 0
     kw = tun.calls[0]
     assert kw["base_model"] == "gemini-3.5-flash"
