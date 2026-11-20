@@ -24,8 +24,7 @@ Run history ([`model_a_runs.csv`](results/model_a/model_a_runs.csv)): run01 (Sta
 (drinking F1 0.50, face touch 0.48, phone use 0.40; smoking and safe driving are the hardest). Data:
 [`labels.csv`](results/model_a/labels.csv), [`class_counts.csv`](results/model_a/class_counts.csv).
 
-**Training and validation curves** (blue = frozen backbone train, orange dashed = frozen val,
-green = fine-tuned train, red dashed = fine-tuned val):
+**Training and validation loss and accuracy curves** (frozen backbone and fine-tuned; early stopping on validation accuracy):
 
 ![Model A loss and accuracy curves](results/model_a/run02_curves.png)
 
