@@ -53,6 +53,37 @@ keyframe limit the effect of single wrong predictions.
 | Measured drowsiness signal dismissed (authority violations) | 0 | 0 | **0** |
 | Latency median / 95th percentile | 1.9 s / 2.4 s | 2.5 s / 3.8 s | **2.9 s / 7.1 s** |
 
+**15 test cases** (held-out drivers; ✓ = event and severity right, ½ = right event, wrong severity, ✗ = wrong event).
+All 51 cases with full answers: [`base_predictions.csv`](results/gemini/base_predictions.csv),
+[`tuned_v2_predictions.csv`](results/gemini/tuned_v2_predictions.csv).
+
+| # | Trigger (from the phone) | Condition | Correct answer (event / severity) | Base Gemini | Tuned v2 | Tuned v2 message to the driver |
+|---|---|---|---|---|---|---|
+| 1 | `nod` | day, no glasses | **drowsy / medium** | early_fatigue / low ✗ | drowsy / medium ✓ | "Your head dropped forward, so consider taking a break soon." |
+| 2 | `gaze_away` | day, no glasses | **distracted_gaze / low** | drowsy / high ✗ | distracted_gaze / low ✓ | "Eyes back on the road, please." |
+| 3 | `perclos_high` | day, no glasses | **drowsy / medium** | early_fatigue / low ✗ | drowsy / high ½ | "You're showing signs of severe fatigue, so please pull over safely and rest." |
+| 4 | `smoking` | day, no glasses | **smoking / low** | smoking / medium ½ | smoking / low ✓ | "Keep your hands on the wheel and your eyes on the road." |
+| 5 | `phone_use` | night, no glasses | **false_alarm / low** | false_alarm / low ✓ | false_alarm / low ✓ | "No alert needed." |
+| 6 | `phone_use` | day, no glasses | **distracted_phone / high** | distracted_phone / high ✓ | distracted_phone / high ✓ | "Put the phone down and keep your eyes on the road." |
+| 7 | `phone_use` | day, no glasses | **distracted_phone / medium** | distracted_phone / medium ✓ | distracted_phone / medium ✓ | "Please end the call or go hands-free, and keep your eyes on the road." |
+| 8 | `eye_closure_long` | day, no glasses | **drowsy / high** | drowsy / high ✓ | drowsy / high ✓ | "Your eyes closed for over a second, so please pull over safely and rest." |
+| 9 | `yawn` | day, no glasses | **early_fatigue / low** | early_fatigue / low ✓ | early_fatigue / low ✓ | "You're yawning, so stay alert and plan a break if you feel tired." |
+| 10 | `nod` | night, sunglasses | **drowsy / medium** | drowsy / medium ✓ | drowsy / medium ✓ | "Your head dropped forward, so consider taking a break soon." |
+| 11 | `face_touch` | day, clear glasses | **drowsy / medium** | drowsy / medium ✓ | early_fatigue / low ✗ | "You seem a little tired, so consider a short break soon." |
+| 12 | `drinking` | day, no glasses | **false_alarm / low** | drinking / low ✗ | drinking / low ✗ | "Keep at least one hand on the wheel while you drink." |
+| 13 | `smoking` | day, no glasses | **smoking / low** | early_fatigue / low ✗ | false_alarm / low ✗ | "No alert needed." |
+| 14 | `yawn` | day, clear glasses | **early_fatigue / low** | drowsy / high ✗ | drowsy / high ✗ | "Your eyes closed for over a second, so please pull over safely and rest." |
+| 15 | `face_touch` | day, sunglasses | **false_alarm / low** | false_alarm / low ✓ | early_fatigue / low ✗ | "You seem a little tired, so consider a short break soon." |
+
+**What the cases show.** Tuning fixed the base model's most dangerous habit, softening a real drowsiness signal
+into "early fatigue" (cases 1 and 3), and its confusion of looking away with closed eyes (case 2). It also taught the
+model our severity rules and fixed messages (cases 4 and 5): the base model broke a guide rule in 16 of 51 answers (31 %), and never used the guide's exact driver messages.
+**Why the failures happen:** in case 12 the bottle is in the frame but not at the mouth, and one still image can't show
+whether the driver is about to drink. In case 13 the cigarette is small and partly hidden by the hand. In case 14 the
+eyes are squeezed shut during the yawn, so the image looks like an eye closure. Case 15 is a borderline face touch
+with sunglasses, where the eyes can't be seen. Cases 11 and 15 show the tuned model leaning toward "early fatigue"
+for face touches, a pattern from the training labels.
+
 Tuned v1 was deleted by Google when our course cloud credit ran out on Nov 18; v2 was re-tuned on the same data and is
 the model used in the app and the system tests. The two runs show normal run-to-run variation of fine-tuning.
 Training loss curves are not shown: the Vertex AI console does not display them for tuning jobs in the `us`
