@@ -4,7 +4,7 @@ Model development code for **DriveAware** (CS663 Project 2): data preparation, M
 Gemini fine-tuning, evaluation and system-test matching. App code lives in
 [`driveaware-app`](https://github.com/PallikalaS/driveaware-app).
 
-> Images, videos and model binaries never go to GitHub — they live in the shared Drive folder
+> Images, videos and model binaries never go to GitHub; they live in the shared Drive folder
 > `DriveAware/` (and the GCS bucket for tuning). Commit CSVs, notebooks (with outputs) and results.
 
 ## Results and testing
@@ -145,7 +145,7 @@ Face detection for the dynamic crop: download MediaPipe's
 to OpenCV's Haar cascade, and if that is missing too, to a center crop (rows are marked
 `center_fallback` in `labels.csv`).
 
-## Mahitha — Wed: crop choice, frames, labels
+## Mahitha: Wed, crop choice, frames, labels
 
 ```bash
 # 1. crop comparison on 3–4 clips (include texting held low) → post the images on Discord
@@ -172,7 +172,7 @@ iPhones also work); badly named clips are skipped with a message.
 c2/c4 phone_ear, c6 drinking_cup, c8 hand_forehead; c5 radio, c7 reaching behind, c9 passenger are
 dropped. Public data is train/val only; **test = held-out team members only**.
 
-## Vanessa — event CSV questions (answered)
+## Vanessa: event CSV questions (answered)
 
 1. **`event_type=none` for normal driving?** Yes. Every `none` row is a stretch of plain driving;
    any alert inside it counts as a false alarm, and the total `none` time is the denominator for
@@ -186,7 +186,7 @@ dropped. Public data is train/val only; **test = held-out team members only**.
    app alert of the same type starts between `start_s − 1 s` and `end_s + 3 s`
    (`--pre/--post`). Detection delay = alert time − `start_s`. Start the app and the recording
    together; if they're off, pass `--offset`.
-5. `mirror_check` rows must **not** alert — an alert there is reported as a false alarm.
+5. `mirror_check` rows must **not** alert; an alert there is reported as a false alarm.
 
 ```bash
 python eval/match_events.py --script-dir ../driveaware-app/tests/scripts \
