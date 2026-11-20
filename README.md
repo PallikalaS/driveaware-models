@@ -145,7 +145,7 @@ Face detection for the dynamic crop: download MediaPipe's
 to OpenCV's Haar cascade, and if that is missing too, to a center crop (rows are marked
 `center_fallback` in `labels.csv`).
 
-## Mahitha: Wed, crop choice, frames, labels
+## Model A data: crop choice, frames, labels
 
 ```bash
 # 1. crop comparison on 3–4 clips (include texting held low) → post the images on Discord
@@ -172,7 +172,7 @@ iPhones also work); badly named clips are skipped with a message.
 c2/c4 phone_ear, c6 drinking_cup, c8 hand_forehead; c5 radio, c7 reaching behind, c9 passenger are
 dropped. Public data is train/val only; **test = held-out team members only**.
 
-## Vanessa: event CSV questions (answered)
+## Event CSV format for test sessions
 
 1. **`event_type=none` for normal driving?** Yes. Every `none` row is a stretch of plain driving;
    any alert inside it counts as a false alarm, and the total `none` time is the denominator for
