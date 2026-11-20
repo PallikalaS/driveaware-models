@@ -77,7 +77,7 @@ All 51 cases with full answers: [`base_predictions.csv`](results/gemini/base_pre
 
 **What the cases show.** Tuning fixed the base model's most dangerous habit, softening a real drowsiness signal
 into "early fatigue" (cases 1 and 3), and its confusion of looking away with closed eyes (case 2). It also taught the
-model our exact severities and messages (cases 4 and 5; the base model wrote its own wording in 31 % of answers).
+model our severity rules and fixed messages (cases 4 and 5): the base model broke a guide rule in 16 of 51 answers (31 %), and never used the guide's exact driver messages.
 **Why the failures happen:** in case 12 the bottle is in the frame but not at the mouth, and one still image can't show
 whether the driver is about to drink. In case 13 the cigarette is small and partly hidden by the hand. In case 14 the
 eyes are squeezed shut during the yawn, so the image looks like an eye closure. Case 15 is a borderline face touch
