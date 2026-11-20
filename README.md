@@ -2,10 +2,69 @@
 
 Model development code for **DriveAware** (CS663 Project 2): data preparation, Model A training,
 Gemini fine-tuning, evaluation and system-test matching. App code lives in
-[`driveaware-app`](../driveaware-app).
+[`driveaware-app`](https://github.com/PallikalaS/driveaware-app).
 
 > Images, videos and model binaries never go to GitHub — they live in the shared Drive folder
 > `DriveAware/` (and the GCS bucket for tuning). Commit CSVs, notebooks (with outputs) and results.
+
+## Results and testing
+
+### Model A: driver-activity classifier (fine-tuned MobileNetV3-Small)
+Test set = **two team members never used in training** (3,516 frames); validation = the training subjects' held-back
+clips. Notebook with outputs: [`notebooks/runs/model_a_run02.ipynb`](notebooks/runs/model_a_run02.ipynb).
+
+| Model (same test set) | Test accuracy | Test macro-F1 | Val accuracy |
+|---|---|---|---|
+| CLIP ViT-B/32 zero-shot (pretrained, no training) | 0.547 | 0.457 | 0.540 |
+| Frozen backbone (only the last layer trained) | 0.325 | 0.218 | 0.536 |
+| **Fully fine-tuned (Model A, in the app)** | **0.401** | **0.279** | **0.773** |
+
+Run history ([`model_a_runs.csv`](results/model_a/model_a_runs.csv)): run01 (State Farm only) 0.260 → **run02
+(+ our team's clips) 0.401** test accuracy. Per class: [`run02_finetuned_per_class.csv`](results/model_a/run02_finetuned_per_class.csv)
+(drinking F1 0.50, face touch 0.48, phone use 0.40; smoking and safe driving are the hardest). Data:
+[`labels.csv`](results/model_a/labels.csv), [`class_counts.csv`](results/model_a/class_counts.csv).
+
+**Training and validation curves** (blue = frozen backbone train, orange dashed = frozen val,
+green = fine-tuned train, red dashed = fine-tuned val):
+
+![Model A loss and accuracy curves](results/model_a/run02_curves.png)
+
+| Confusion matrix (5 app classes) | Confusion matrix (10 subclasses) |
+|---|---|
+| ![](results/model_a/run02_confusion.png) | ![](results/model_a/run02_confusion_subclass.png) |
+
+The gap between validation (0.77) and test (0.40) is the main finding: the model fits the people it was trained on
+much better than new drivers (only two team members could be used for training, and the public State Farm images
+come from a different camera angle). In the app, a 2-second / 70 %-of-frames rule and Gemini's re-check on the
+keyframe limit the effect of single wrong predictions.
+
+### Model B: fine-tuned Gemini 3.5 Flash (event verifier and driver message)
+398 hand-labeled events (291 train / 56 val / 51 test; test events only from the held-out drivers), evaluated with
+[`eval/gemini_eval.py`](eval/gemini_eval.py):
+
+| Metric (51 test events) | Base Gemini 3.5 Flash | Tuned v1 (Nov 15) | **Tuned v2 (deployed)** |
+|---|---|---|---|
+| Event accuracy | 0.765 | 0.902 | **0.843** |
+| Event macro-F1 | 0.690 | 0.833 | **0.769** |
+| Severity accuracy | 0.745 | 0.961 | **0.922** |
+| Action accuracy | 0.843 | 0.863 | **0.843** |
+| Follows the labeling guide | 0.686 | 0.902 | **0.882** |
+| Valid JSON | 1.000 | 1.000 | **1.000** |
+| False-alarm precision / recall | 1.000 / 0.667 | 1.000 / 0.667 | **0.889 / 0.667** |
+| Measured drowsiness signal dismissed (authority violations) | 0 | 0 | **0** |
+| Latency median / 95th percentile | 1.9 s / 2.4 s | 2.5 s / 3.8 s | **2.9 s / 7.1 s** |
+
+Tuned v1 was deleted by Google when our course cloud credit ran out on Nov 18; v2 was re-tuned on the same data and is
+the model used in the app and the system tests. The two runs show normal run-to-run variation of fine-tuning.
+Training loss curves are not shown: the Vertex AI console does not display them for tuning jobs in the `us`
+multi-region, the only region where Gemini 3.5 Flash can be tuned.
+
+### Detection thresholds (tuned on validation clips only)
+[`results/tuning/thresholds.csv`](results/tuning/thresholds.csv): start vs. final values. Tuning on V01–V04 raised yawn
+recall from 0.2 to 0.8, macro-F1 from 0.49 to 0.69, and cut false alarms from 11 to 7.
+
+### Full-system tests
+_Results of the 8 scripted sessions with the held-out drivers (`eval/match_events.py`) are added in `results/system/`._
 
 ## Pipeline end to end
 
